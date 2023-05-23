@@ -1,0 +1,384 @@
+# 顧客満足とその影響要因　重回帰分析　品質評価（説明変数X1=Q11）＋コスパ（説明変数X2=Q12）→ 顧客満足（目的変数ｙ=Q9）
+1．重回帰分析 GATE列（4社）別
+# パッケージ
+import pandas as pd
+import numpy as np
+
+from sklearn.utils import resample
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import japanize_matplotlib
+
+import statsmodels.api as sm
+import sklearn
+from sklearn.linear_model import LinearRegression
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+#ブートストラップ用
+from sklearn.utils import resample
+
+
+# 2変数モデル　GATEごと解析（GATE＝１～４まで4社） groupbyとループ処理で自動化
+# サンプルサイズそのまま
+# 1.ローデータ読み込み
+df23 = pd.read_csv("Your_Date_Here.csv", encoding='utf-8')
+
+# GATEに応じた辞書を作成
+gate_dict = {1: 'A社', 2: 'B社', 3: 'C社', 4: 'D社'}
+
+# 説明変数２つ y(Q9) = ax1(Q11) + bx2(Q12)
+
+import statsmodels.api as sm
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+
+for gate, company in gate_dict.items():
+    # 各社のCSデータを抽出
+    company_data = df23[df23['GATE'] == gate]
+    X = company_data[['Q11', 'Q12']]
+    y = company_data['Q9']
+    
+    # 定数項（切片）の追加
+    X = sm.add_constant(X)
+    
+    # 回帰分析
+    model = sm.OLS(y, X)
+    results = model.fit()
+    
+    # 結果の表示
+    print(f"{company}  重回帰分析 結果")
+    print(results.summary())
+    
+    # 回帰式の表示
+    equation = f"Y = {results.params['const']:.2f} + {results.params['Q11']:.2f} * 品質 + {results.params['Q12']:.2f} * コスパ"
+    print("回帰式:")
+    print(equation)
+    
+    # R-squared（決定係数）
+    r_squared = results.rsquared.round(3)
+    print("R-squared:", r_squared)
+    
+    # RMSE（Root Mean Squared Error）
+    y_pred = results.predict(X)
+    mse = np.mean((y - y_pred)**2)
+    rmse = np.sqrt(mse).round(3)
+    print("RMSE:", rmse)
+    
+    # 散布図
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    import japanize_matplotlib
+
+    # Seabornのスタイル設定
+    sns.set_style("whitegrid")
+
+    # 散布図のプロット
+    sns.set()
+    plt.scatter(y, y_pred, alpha=0.5)
+    plt.plot([min(y), max(y)], [min(y), max(y)], color='violet')  # 回帰直線の追加
+    plt.xlabel('実際の満足度')
+    plt.ylabel('予測された満足度')
+    plt.title('実測値 vs 予測値')
+    plt.show()
+    
+    # 相関行列とVIFの計算
+    correlation_matrix = company_data[['Q11', 'Q12']].corr()
+    print("相関係数:")
+    print(correlation_matrix)
+
+    X = company_data[['Q11', 'Q12']]
+    X = sm.add_constant(X)
+    vif = pd.DataFrame()
+    vif["Variable"] = X.columns
+    vif["VIF"] = [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
+    print("VIF:")
+    print(vif)
+    print("\n")
+    
+    
+    
+# 2. 重回帰分析　結果の検証(1)　交差検証　LOOCV　一つ抜き交差検証の場合　
+# サンプルサイズが小さい場合、有効＋乱数を使わないので結果が安定
+# 検証データを１つ、残りすべてのサンプルを訓練データとして用いる
+# ここでは、1社（GATE = 4）を対象 
+# 顧客満足とその影響要因　重回帰分析　品質評価（説明変数X1=Q11）＋コスパ（説明変数X2=Q12）→ 顧客満足（目的変数ｙ=Q9）
+import numpy as np
+import pandas as pd
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+import japanize_matplotlib
+
+import statsmodels.api as sm
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+import sklearn
+from sklearn.linear_model import LinearRegression
+
+
+# ローデータ読み込み
+df23 = pd.read_csv("Your_Date_Here.csv", encoding='utf-8')
+
+# GATEが4の会社のデータを抽出
+company_data = df23[df23['GATE'] == 4]
+
+# LOOCVのためのデータ準備
+X = company_data[['Q11', 'Q12']]
+X = sm.add_constant(X)
+y = company_data['Q9']
+
+# 結果を格納するためのリスト
+results_list = []
+
+# LOOCVのループ
+for i in range(len(X)):
+    # テストセットとトレーニングセットを分割
+    X_test = X.iloc[[i]]
+    y_test = y.iloc[[i]]
+    X_train = X.drop(X.index[i])
+    y_train = y.drop(y.index[i])
+
+    # 回帰分析
+    model = sm.OLS(y_train, X_train)
+    results = model.fit()
+
+    # 結果をリストに追加
+    results_list.append(results)
+
+# 結果の統合
+params = np.mean([result.params for result in results_list], axis=0)
+bse = np.mean([result.bse for result in results_list], axis=0)
+
+# 基本統計量の計算
+params = np.vstack([result.params for result in results_list])
+bse = np.vstack([result.bse for result in results_list])
+ci_low = np.percentile(params, 2.5, axis=0)
+ci_high = np.percentile(params, 97.5, axis=0)
+mean_params = np.mean(params, axis=0)
+mean_bse = np.mean(bse, axis=0)
+
+# 回帰式の表示
+equation = f"Y = {mean_params[0]:.2f} + {mean_params[1]:.2f} * 品質 + {mean_params[2]:.2f} * コスパ"
+print("回帰式:")
+print(equation)
+
+# LOOCV結果の平均を計算
+mean_r2 = np.mean([result.rsquared for result in results_list])
+mean_adj_r2 = np.mean([result.rsquared_adj for result in results_list])
+mean_rmse = np.sqrt(np.mean([result.mse_resid for result in results_list]))
+mean_p_values = np.mean([result.pvalues for result in results_list], axis=0)
+mean_t_values = np.mean([result.tvalues for result in results_list], axis=0)
+
+# 相関行列とVIFの計算
+correlation_matrix = company_data[['Q11', 'Q12']].corr().round(3)
+vif = pd.DataFrame()
+vif["Variable"] = X.columns
+vif["VIF"] = [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
+
+# 結果の表示
+print("LOOCV 基本統計量:")
+print(f"R2決定係数: {mean_r2:.3f}")
+print(f"自由度調整済み決定係数: {mean_adj_r2:.3f}")
+print(f"RMSE: {mean_rmse:.3f}")
+print(f"推定値: {mean_params}")
+print(f"標準誤差: {mean_bse}")
+print("p値:")
+for i, p_value in enumerate(mean_p_values):
+    print(f"{X.columns[i]}: {p_value:.3f}")
+print("t値:")
+for i, t_value in enumerate(mean_t_values):
+    print(f"{X.columns[i]}: {t_value:.3f}")
+print(f"信頼区間(95%): {ci_low} - {ci_high}")
+print(f"VIF: {vif}")
+print("相関係数:")
+print(correlation_matrix)
+
+# 一覧表にまとめる
+LOOCV_T = pd.DataFrame({
+    '推定値': mean_params.flatten().round(3),
+    '標準誤差': mean_bse.flatten().round(3),
+    't値': mean_t_values.flatten().round(3),
+    'p値': mean_p_values.flatten().round(3),
+    '信頼区間2.5%': ci_low.flatten().round(3),
+    '信頼区間97.5%': ci_high.flatten().round(3),
+    'VIF': vif['VIF'].values.round(3)
+}, index=['切片', 'Q11品質', 'Q12コスパ'])
+
+# タイトルを太字で表示
+from IPython.display import Markdown
+
+title = "GATE4 重回帰分析結果 LOOCV（一つ抜き交差検証）"
+display(Markdown(f"**{title}**"))
+LOOCV_T
+
+
+
+
+# 3. 重回帰分析　結果の検証(2)　ブートストラップ法（再抽出）による評価を行う場合
+# サンプルサイズが大きい場合　予測性能、信頼区間等を検証 データの63%を重複を許して訓練データ（ランダム）
+# LOOVCが利用可能なら、そちらの結果を採用した方がよい
+# 顧客満足とその影響要因　重回帰分析　品質評価（説明変数X1=Q11）＋コスパ（説明変数X2=Q12）→ 顧客満足（目的変数ｙ=Q9）
+
+# パッケージ
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import japanize_matplotlib
+
+import statsmodels.api as sm
+import sklearn
+from sklearn.linear_model import LinearRegression
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from sklearn.utils import resample
+
+# GATE=４について、ブートストラップ法で重回帰分析
+
+# ローデータ読み込み
+df23 = pd.read_csv("Your_Date_Here.csv", encoding='utf-8')
+
+# GATE＝4（会社）のデータを抽出
+company_data = df23[df23['GATE'] == 4]
+
+# ブートストラップ回数 10000回
+bootstrap_iterations = 10000
+
+# 結果を格納するためのリスト
+results_list = []
+
+# ブートストラップ後のR2決定係数、自由度調整済み決定係数,RMSE、p値、t値を計算するためのリスト
+bootstrap_r2 = []
+bootstrap_rmse = []
+bootstrap_p_values = []
+bootstrap_t_values = []
+bootstrap_adj_r2 = []
+
+# ブートストラップのループ
+for i in range(bootstrap_iterations):
+    # ブートストラップサンプルの作成
+    bootstrap_sample = company_data.sample(frac=1, replace=True)
+    sample_size = len(bootstrap_sample)  # サンプルのサイズを取得
+    
+    # ブートストラップサンプルで回帰分析を実行
+    X = bootstrap_sample[['Q11', 'Q12']]
+    y = bootstrap_sample['Q9']
+
+    # 定数項（切片）の追加
+    X = sm.add_constant(X)
+    
+    # 回帰分析
+    model = sm.OLS(y, X)
+    results = model.fit()
+    
+    # 結果をリストに追加
+    results_list.append(results)
+
+    # R2決定係数を計算
+    y_pred = results.predict(X)
+    y_mean = y.mean()
+    ss_total = ((y - y_mean) ** 2).sum()
+    ss_residual = ((y - y_pred) ** 2).sum()
+    r2 = 1 - (ss_residual / ss_total)
+
+    # 自由度調整済み決定係数を計算
+    n = len(y)
+    p = X.shape[1] - 1  # パラメータの数（切片を除く）
+    adj_r2 = 1 - (1 - r2) * ((n - 1) / (n - p - 1))
+
+    # RMSEを計算
+    n = len(y)
+    rmse = np.sqrt(ss_residual / n)
+
+    # p値とt値を取得
+    p_values = results.pvalues
+    t_values = results.tvalues
+
+    # 計算結果をリストに追加
+    bootstrap_r2.append(r2)
+    bootstrap_adj_r2.append(adj_r2)    
+    bootstrap_rmse.append(rmse)
+    bootstrap_p_values.append(p_values)
+    bootstrap_t_values.append(t_values)
+  
+    
+# ブートストラップ結果の統合
+params = np.mean([result.params for result in results_list], axis=0)
+bse = np.mean([result.bse for result in results_list], axis=0)
+
+# 基本統計量の計算
+params = np.vstack([result.params for result in results_list])
+bse = np.vstack([result.bse for result in results_list])
+ci_low = np.percentile(params, 2.5, axis=0)
+ci_high = np.percentile(params, 97.5, axis=0)
+mean_params = np.mean(params, axis=0)
+mean_bse = np.mean(bse, axis=0)
+    
+    
+# 回帰式の表示 小数点以下2桁
+equation = f"Y = {mean_params[0]:.2f} + {mean_params[1]:.2f} * 品質 + {mean_params[2]:.2f} * コスパ"
+print("回帰式:")
+print(equation)    
+    
+    
+# ブートストラップ結果の平均を計算
+mean_r2 = np.mean(bootstrap_r2)
+mean_adj_r2 = np.mean(bootstrap_adj_r2)
+mean_rmse = np.mean(bootstrap_rmse)
+mean_p_values = np.mean(bootstrap_p_values, axis=0)
+mean_t_values = np.mean(bootstrap_t_values, axis=0)
+
+
+# 相関行列とVIFの計算
+correlation_matrix = company_data[['Q11', 'Q12']].corr().round(3)
+
+X = company_data[['Q11', 'Q12']]
+X = sm.add_constant(X)
+vif = pd.DataFrame()
+vif["Variable"] = X.columns
+vif["VIF"] = [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
+
+
+# 結果の表示
+print("ブートストラップ　基本統計量:")
+print(f"ブートストラップ　サンプル数: {sample_size}")
+print(f"R2決定係数: {mean_r2:.3f}")
+print(f"自由度調整済み決定係数: {mean_adj_r2:.3f}")
+print(f"RMSE: {mean_rmse:.3f}")
+print(f"推定値: {mean_params}")
+print(f"標準誤差: {mean_bse}")
+print("p値:")
+for i, p_value in enumerate(mean_p_values):
+    print(f"{X.columns[i]}: {p_value:.3f}")
+print("t値:")
+for i, t_value in enumerate(mean_t_values):
+    print(f"{X.columns[i]}: {t_value:.3f}")
+print(f"信頼区間(95%): {ci_low} - {ci_high}")
+print(f"VIF: {vif}")
+print("相関係数:")
+print(correlation_matrix)
+
+# 一覧表にまとめる .flatten()メソッドで、いったんシリーズにして、シリーズ同士を結合してDF
+Boot_T = pd.DataFrame({
+    '推定値': mean_params.flatten().round(3),
+    '標準誤差': mean_bse.flatten().round(3),
+    't値': mean_t_values.flatten().round(3),
+    'p値': mean_p_values.flatten().round(3),
+    '信頼区間2.5%': ci_low.flatten().round(3),
+    '信頼区間97.5%': ci_high.flatten().round(3),
+    'VIF': vif['VIF'].values.round(3)
+}, index=['切片', 'Q11品質', 'Q12コスパ'])
+
+
+# タイトルの追加
+# print("UQL  重回帰分析結果 ブートストラップ 1000回")
+# Boot_T
+
+
+# タイトルを太字
+from IPython.display import Markdown
+
+title = "GATE4　重回帰分析結果 ブートストラップ 10000回"
+display(Markdown(f"**{title}**"))
+Boot_T
