@@ -4,9 +4,6 @@
 import pandas as pd
 import numpy as np
 
-from sklearn.utils import resample
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import japanize_matplotlib
@@ -29,11 +26,6 @@ df23 = pd.read_csv("Your_Date_Here.csv", encoding='utf-8')
 gate_dict = {1: 'A社', 2: 'B社', 3: 'C社', 4: 'D社'}
 
 # 説明変数２つ y(Q9) = ax1(Q11) + bx2(Q12)
-
-import statsmodels.api as sm
-from statsmodels.stats.outliers_influence import variance_inflation_factor
-
-
 for gate, company in gate_dict.items():
     # 各社のCSデータを抽出
     company_data = df23[df23['GATE'] == gate]
