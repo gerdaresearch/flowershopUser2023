@@ -11,6 +11,7 @@
 #　 　 x軸は相関係数、y軸はサービス項目平均点として、CSポートフォリオの図表（4象限）を作図　FLAG（GATE）ごとに4つの図出力
 # 7.  統計検定（p値、判定基準）、一覧表にする
 
+
 # 花店 顧客満足CSポートフォリオ分析 スクリプト 【全体】
 # 1. 下準備　　
 # CS は1＝1点～10＝10点
@@ -35,8 +36,9 @@ from pandas.core.groupby.grouper import get_grouper
 
 # CSポートフォリオ 
 # 2. ローデータ読み込み
-# df23 = pd.read_csv("YOUR_DATA.csv", encoding='utf-8') 
-# ローデータの入ったファイルを指定、日本語のエンコーディングはutf-8とする
+# ローデータのファイルを指定、日本語のエンコーディングはutf-8とする　YOUR_DATA.csv　の部分は自分のデータに
+df23 = pd.read_csv("YOUR_DATA.csv", encoding='utf-8')  
+
 
 # 3. 平均スコア = 図のy軸データ【全体】
 q17_cols = [f"Q17_{i}" for i in range(1, 31)]
@@ -84,9 +86,21 @@ display(summary_df.round(3))
 
 import numpy as np
 
-# 日本語フォントの設定　手動でインストール Windowsの場合
-font_path = "C:/Windows/Fonts/YuGothL.ttc" # ファイルパスのスラッシュは正斜線を使う
-font_prop = fm.FontProperties(fname=font_path)
+import matplotlib as mpl
+import matplotlib.font_manager as fm
+
+# 日本語フォント 手動でインストール Windows  ファイルパスのスラッシュは正斜線を使う
+font_path = "C:/Windows/Fonts/YuGothL.ttc"
+font_prop = fm.FontProperties(fname=font_path, size=18)
+
+# seabornのスタイル設定
+sns.set_style("whitegrid")
+sns.set_palette("pastel")  # 透明感のあるカラーパレットを設定
+
+# フォントの設定
+sns.set(font=font_prop.get_name())
+sns.set_context("notebook", font_scale=1.7)
+
 
 # 図のプロットの際、文字が重ならないようにするパッケージ　
 !pip install adjustText
@@ -96,24 +110,34 @@ from adjustText import adjust_text  # adjustTextライブラリをインポー�
 median_score = np.median(mean_scores)
 median_correlation = np.median(correlations)
 
-plt.figure(figsize=(16, 12))
-plt.scatter(correlations[mean_scores>=median_score], mean_scores[mean_scores>=median_score], color='blue', label='High Score', marker='o')
-plt.scatter(correlations[mean_scores<median_score], mean_scores[mean_scores<median_score], color='red', label='Low Score', marker='x')
+plt.figure(figsize=(30, 30))
+scatter = plt.scatter(correlations[mean_scores >= median_score], mean_scores[mean_scores >= median_score], color='blue', label='High Score', marker='o')
+scatter.set_alpha(0.6)  # 高スコア　データポイントの透明度を下げる
+
+scatter = plt.scatter(correlations[mean_scores < median_score], mean_scores[mean_scores < median_score], color='red', label='Low Score', marker='x')
+scatter.set_alpha(0.6)  # 低スコア　データポイントの透明度を下げる
+
 plt.axhline(median_score, linestyle='--', color='gray')
 plt.axvline(median_correlation, linestyle='--', color='gray')
-plt.title("CSポートフォリオ", fontproperties=font_prop, fontsize=16)
-plt.xlabel("CSとの相関", fontproperties=font_prop, fontsize=12)
-plt.ylabel("平均スコア", fontproperties=font_prop, fontsize=12)
+plt.title("CSポートフォリオ", fontproperties=font_prop, fontsize=30)
+plt.xlabel("CSとの相関", fontproperties=font_prop, fontsize=20)
+plt.ylabel("平均スコア", fontproperties=font_prop, fontsize=20)
 
+# 背景色を薄い桜色に設定
+plt.gca().set_facecolor("#FFF7F3")
+
+# 軸ラベルの背景色を透明に見せるために、白色のテキストエフェクトを追加する
+plt.gca().xaxis.label.set_color('white')
+plt.gca().yaxis.label.set_color('white')
+
+# データラベル　列名の表示（col_names)　alpha指定でデータラベルの透明度とフォントサイズを調整
 for label, x, y in zip(col_names, correlations, mean_scores):
     if x >= 0 and y >= 0:
-        plt.annotate(label, xy=(x, y), xytext=(5, -5), textcoords="offset points", ha='left', va='bottom', fontproperties=font_prop, bbox=dict(facecolor='white', edgecolor='none', alpha=0.7))
-    elif x < 0 and y >= 0:
-        plt.annotate(label, xy=(x, y), xytext=(-5, -5), textcoords="offset points", ha='right', va='bottom', fontproperties=font_prop, bbox=dict(facecolor='white', edgecolor='none', alpha=0.7))
+        plt.annotate(label, xy=(x, y), xytext=(5, -5), textcoords="offset points", ha='left', va='bottom', fontproperties=font_prop, bbox=dict(facecolor='white', edgecolor='none', alpha=0.8))  
     elif x < 0 and y < 0:
-        plt.annotate(label, xy=(x, y), xytext=(-5, 5), textcoords="offset points", ha='right', va='top', fontproperties=font_prop, bbox=dict(facecolor='white', edgecolor='none', alpha=0.7))
+        plt.annotate(label, xy=(x, y), xytext=(-5, 5), textcoords="offset points", ha='right', va='top', fontproperties=font_prop, bbox=dict(facecolor='white', edgecolor='none', alpha=0.8))
     else:
-        plt.annotate(label, xy=(x, y), xytext=(5, 5), textcoords="offset points", ha='left', va='top', fontproperties=font_prop, bbox=dict(facecolor='white', edgecolor='none', alpha=0.7))
+        plt.annotate(label, xy=(x, y), xytext=(5, 5), textcoords="offset points", ha='left', va='top', fontproperties=font_prop, bbox=dict(facecolor='white', edgecolor='none', alpha=0.8))
            
 plt.show()
 
